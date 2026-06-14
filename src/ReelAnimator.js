@@ -4,7 +4,7 @@ const ACCEL_DURATION = 200;  // ms: 加速フェーズ
 const DECEL_DURATION = 500;  // ms: 減速フェーズ
 const BOUNCE_OVER    = 18;   // px: バウンス時の行き過ぎ量
 const BOUNCE_BACK    = 80;   // ms: バウンスの戻り時間
-const COPIES         = 6;    // ストリップのコピー数（ループ用）
+const COPIES         = 8;    // ストリップのコピー数（ループ用）
 
 // イージング関数
 const easeInQuad  = t => t * t;
@@ -87,14 +87,15 @@ export class ReelAnimator {
         this._phase = 'decel';
         cancelAnimationFrame(this._rafId);
 
-        const singleH = this._strip.length * CELL_H;
+        const singleH  = this._strip.length * CELL_H;
+        const minDist  = singleH * 0.5;  // 最低でも半ストリップ分進んで停止
+        const safeBound = -((COPIES - 1) * singleH); // 末端1コピーは余白として確保
 
-        // 目標Y: copy2の[pos]が上段に来る位置
-        let targetY = -(2 * singleH + pos * CELL_H);
-
-        // 現在位置より必ず先（より負）になるよう調整
-        while (targetY > this._y) targetY -= singleH;
-        while (targetY < this._y - singleH * 1.5) targetY += singleH;
+        // copy0のposを基点に、現在地より minDist 以上先を探す
+        let targetY = -(pos * CELL_H);
+        while (targetY > this._y - minDist) targetY -= singleH;
+        // 安全圏を超えた場合は1コピー戻す
+        while (targetY < safeBound) targetY += singleH;
 
         const startY = this._y;
         const dist   = targetY - startY;
@@ -172,8 +173,8 @@ export class ReelAnimator {
 
     const singleH = this._strip.length * CELL_H;
     let newY = this._y - this._currentSpeed * dt;
-    // ループ: 末端に達したら1コピー分ジャンプ（見た目は連続）
-    if (newY < -(COPIES * singleH - 3 * CELL_H)) newY += singleH;
+    // 末端から3コピー手前でジャンプ（this._y が安全圏を超えないようにする）
+    if (newY < -(COPIES - 3) * singleH) newY += singleH;
     this._setY(newY);
 
     this._rafId = requestAnimationFrame(ts => this._spinLoop(ts));
