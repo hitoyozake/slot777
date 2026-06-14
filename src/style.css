@@ -1,0 +1,210 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: #1a1a2e;
+  color: #fff;
+  font-family: 'Segoe UI', sans-serif;
+  min-height: 100dvh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#app {
+  width: 100%;
+  max-width: 420px;
+  padding: 16px;
+}
+
+/* ===== タイトル ===== */
+h1 {
+  text-align: center;
+  font-size: 2rem;
+  letter-spacing: 4px;
+  color: #ffd700;
+  text-shadow: 0 0 12px #ffd70088;
+  margin-bottom: 16px;
+}
+
+/* ===== フィーバーゲージ ===== */
+.fever-wrap {
+  margin-bottom: 12px;
+}
+
+.fever-label {
+  font-size: 0.75rem;
+  color: #aaa;
+  margin-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.fever-bar-bg {
+  background: #333;
+  border-radius: 8px;
+  height: 16px;
+  overflow: hidden;
+}
+
+.fever-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #ff6b6b, #ffd700);
+  border-radius: 8px;
+  transition: width 0.1s linear;
+}
+
+.fever-bar.full {
+  animation: pulse 0.4s infinite alternate;
+}
+
+@keyframes pulse {
+  from { filter: brightness(1); }
+  to   { filter: brightness(1.5); }
+}
+
+/* ===== スロット筐体 ===== */
+.cabinet {
+  background: #16213e;
+  border: 3px solid #ffd700;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 0 24px #ffd70044;
+}
+
+/* ===== リール ===== */
+.reels {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.reel-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cell {
+  background: #0f3460;
+  border: 2px solid #334;
+  border-radius: 8px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  transition: background 0.15s;
+}
+
+.cell.spinning {
+  animation: spin-blur 0.08s steps(1) infinite;
+}
+
+@keyframes spin-blur {
+  0%   { filter: blur(2px); }
+  50%  { filter: blur(0px); }
+  100% { filter: blur(2px); }
+}
+
+.cell.hit {
+  border-color: #ffd700;
+  background: #1a3a00;
+  animation: hit-flash 0.5s 3;
+}
+
+@keyframes hit-flash {
+  0%, 100% { background: #1a3a00; }
+  50%       { background: #2a5a00; }
+}
+
+/* ===== クレジット・BET ===== */
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+  color: #ccc;
+}
+
+.info-row span strong {
+  color: #ffd700;
+  font-size: 1.1rem;
+}
+
+/* ===== ボタン群 ===== */
+.controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+button {
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: bold;
+  padding: 10px 0;
+  flex: 1;
+  transition: filter 0.15s, transform 0.1s;
+}
+
+button:active { transform: scale(0.96); }
+button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.btn-spin {
+  background: linear-gradient(135deg, #ffd700, #ff8c00);
+  color: #1a1a2e;
+  font-size: 1.1rem;
+}
+
+.btn-bet {
+  background: #334;
+  color: #ccc;
+}
+
+.btn-bet.active {
+  background: #446;
+  color: #fff;
+  border: 2px solid #ffd700;
+}
+
+.btn-bell {
+  background: linear-gradient(135deg, #e040fb, #7c4dff);
+  color: #fff;
+  font-size: 1rem;
+}
+
+/* ===== メッセージ ===== */
+.message {
+  text-align: center;
+  min-height: 1.4rem;
+  font-size: 1rem;
+  color: #ffd700;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+/* ===== フィーバー演出 ===== */
+.cabinet.fever {
+  border-color: #ff6b6b;
+  box-shadow: 0 0 32px #ff6b6b88;
+  animation: fever-glow 0.5s infinite alternate;
+}
+
+@keyframes fever-glow {
+  from { box-shadow: 0 0 24px #ff6b6b88; }
+  to   { box-shadow: 0 0 48px #ff6b6bcc; }
+}
+
+/* ===== レスポンシブ（スマホ縦向き優先、PCでも見やすく） ===== */
+@media (max-width: 380px) {
+  .cell { height: 60px; font-size: 1.6rem; }
+  h1 { font-size: 1.5rem; }
+}
