@@ -126,7 +126,7 @@ function highlightHits(hits) {
 credit.on(({ balance, bet }) => {
   balanceEl.textContent = balance;
   betEl.textContent = bet;
-  spinBtn.disabled = !credit.canBet() || !state.is(STATE.IDLE);
+  spinBtn.disabled = !credit.canBet() || (!state.is(STATE.IDLE) && !state.is(STATE.FEVER));
 });
 
 // --- フィーバーゲージ表示 ---
