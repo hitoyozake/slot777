@@ -1,12 +1,14 @@
-// 各リールのシンボルリスト（重み付き）
+// 各リールのシンボルリスト（重み付き、BLANKなし）
+// 通常: BAR×8, WATER×6, CHERRY×3, BELL×2, 7×1 = 20
 const REEL_STRIP = [
-  'BLANK','BAR','BLANK','WATER','BLANK','CHERRY','BLANK','BAR',
-  'BLANK','WATER','BLANK','CHERRY','BLANK','BELL','BLANK','BAR',
-  'BLANK','WATER','BLANK','7',
+  'BAR','WATER','BAR','WATER','BAR','CHERRY','BAR','WATER',
+  'BAR','CHERRY','WATER','BAR','WATER','BELL','BAR','CHERRY',
+  'WATER','BAR','BELL','7',
 ];
 
+// フィーバー: 7×2, BELL×5, CHERRY×5, WATER×4, BAR×4 = 20
 const FEVER_REEL_STRIP = [
-  'BLANK','BAR','WATER','CHERRY','BAR','CHERRY','BELL','BAR',
+  '7','BELL','WATER','CHERRY','BAR','CHERRY','BELL','BAR',
   'WATER','CHERRY','BELL','CHERRY','BAR','BELL','WATER','BAR',
   'CHERRY','WATER','BELL','7',
 ];
