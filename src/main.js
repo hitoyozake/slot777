@@ -3,6 +3,7 @@ import { FeverGauge } from './FeverGauge.js';
 import { ReelEngine } from './ReelEngine.js';
 import { PaylineEvaluator } from './PaylineEvaluator.js';
 import { BellSimulator } from './BellSimulator.js';
+import { AudioDetector } from './AudioDetector.js';
 import { GameStateMachine, STATE } from './GameStateMachine.js';
 
 const SYMBOLS = {
@@ -19,6 +20,11 @@ const SPIN_DURATION_MS = 1200; // リール演出時間
 // --- DOM構築 ---
 document.querySelector('#app').innerHTML = `
   <h1>🎰 777</h1>
+
+  <div class="mic-bar" id="mic-bar">
+    <span id="mic-status">🎤 マイクOFF（シミュレータ使用中）</span>
+    <button class="btn-mic" id="btn-mic">マイクをONにする</button>
+  </div>
 
   <div class="fever-wrap">
     <div class="fever-label">
@@ -54,12 +60,13 @@ document.querySelector('#app').innerHTML = `
 `;
 
 // --- インスタンス ---
-const credit = new CreditManager(100);
-const fever  = new FeverGauge();
-const reel   = new ReelEngine();
-const eval_  = new PaylineEvaluator();
-const bell   = new BellSimulator();
-const state  = new GameStateMachine();
+const credit   = new CreditManager(100);
+const fever    = new FeverGauge();
+const reel     = new ReelEngine();
+const eval_    = new PaylineEvaluator();
+const state    = new GameStateMachine();
+let bell       = new BellSimulator(); // マイクON時に AudioDetector に切り替え
+let usingMic   = false;
 
 // --- DOM参照 ---
 const reelsEl   = document.getElementById('reels');
@@ -72,6 +79,8 @@ const feverPct  = document.getElementById('fever-pct');
 const cabinet   = document.getElementById('cabinet');
 const spinBtn   = document.getElementById('btn-spin');
 const bellBtn   = document.getElementById('btn-bell');
+const micBtn    = document.getElementById('btn-mic');
+const micStatus = document.getElementById('mic-status');
 
 // --- リール DOM 初期化 ---
 let cellEls = []; // cellEls[col][row]
@@ -146,14 +155,53 @@ fever.on('fever_end', () => {
   updateSpinBtn();
 });
 
-// --- ベル ---
-bell.on('bell', () => {
+// --- ベルイベントハンドラ（bell インスタンスが切り替わっても同じ処理） ---
+function onBell() {
   fever.onBell();
   credit.addBonus(1);
   flashMsg('🔔 +1 クレジット!');
+}
+
+bell.on('bell', onBell);
+bellBtn.addEventListener('click', () => {
+  if (!usingMic) bell.trigger();
 });
 
-bellBtn.addEventListener('click', () => bell.trigger());
+// --- マイクONボタン ---
+micBtn.addEventListener('click', async () => {
+  micBtn.disabled = true;
+  micStatus.textContent = '🎤 接続中...';
+  try {
+    const detector = new AudioDetector();
+    await detector.start();
+
+    // BellSimulator から AudioDetector に切り替え
+    bell = detector;
+    bell.on('bell', onBell);
+    usingMic = true;
+
+    micStatus.textContent = '🎤 マイクON（ベル音を検出中）';
+    micBtn.textContent = 'マイクをOFFにする';
+    micBtn.disabled = false;
+    bellBtn.style.display = 'none'; // シミュレータボタンを非表示
+
+    micBtn.onclick = () => {
+      detector.stop();
+      usingMic = false;
+      bell = new BellSimulator();
+      bell.on('bell', onBell);
+      micStatus.textContent = '🎤 マイクOFF（シミュレータ使用中）';
+      micBtn.textContent = 'マイクをONにする';
+      bellBtn.style.display = '';
+      micBtn.onclick = null; // 元のリスナーに戻す（再度addEventListenerは不要）
+    };
+  } catch (err) {
+    // 拒否 or デバイスなし → シミュレータ継続
+    micStatus.textContent = '🎤 マイク取得失敗（シミュレータを使用）';
+    micBtn.textContent = 'マイクをONにする';
+    micBtn.disabled = false;
+  }
+});
 
 // --- BETボタン ---
 document.querySelectorAll('.btn-bet').forEach(btn => {
