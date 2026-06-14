@@ -116,45 +116,60 @@ h1 {
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
   margin-bottom: 16px;
+  /* 中段ラインのハイライト用オーバーレイ */
+  position: relative;
 }
 
-.reel-col {
+/* 中段ペイラインの目印 */
+.reels::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  top: calc(72px);           /* 1行目の高さ分下 */
+  height: 72px;
+  border-top: 2px solid #ffd70033;
+  border-bottom: 2px solid #ffd70033;
+  pointer-events: none;
+}
+
+/* リール1列分のウィンドウ（overflow:hiddenでスクロールを隠す） */
+.reel-window {
+  overflow: hidden;
+  height: 216px;             /* 72px × 3行 */
+  background: #0a2040;
+  border: 2px solid #1e3a5f;
+  border-radius: 8px;
+  position: relative;
+}
+
+/* スクロールするシンボルストリップ */
+.reel-strip {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  will-change: transform;
 }
 
-.cell {
-  background: #0f3460;
-  border: 2px solid #334;
-  border-radius: 8px;
+/* 各シンボルセル */
+.reel-symbol {
   height: 72px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 2rem;
-  transition: background 0.15s;
+  user-select: none;
 }
 
-.cell.spinning {
-  animation: spin-blur 0.08s steps(1) infinite;
-}
-
-@keyframes spin-blur {
-  0%   { filter: blur(2px); }
-  50%  { filter: blur(0px); }
-  100% { filter: blur(2px); }
-}
-
-.cell.hit {
-  border-color: #ffd700;
+/* 当選ハイライト */
+.reel-symbol.hit {
   background: #1a3a00;
-  animation: hit-flash 0.5s 3;
+  box-shadow: inset 0 0 12px #ffd70066;
+  animation: hit-flash 0.45s 4;
 }
 
 @keyframes hit-flash {
-  0%, 100% { background: #1a3a00; }
-  50%       { background: #2a5a00; }
+  0%, 100% { background: #1a3a00; box-shadow: inset 0 0 12px #ffd70066; }
+  50%       { background: #2a6000; box-shadow: inset 0 0 24px #ffd700aa; }
 }
 
 /* ===== クレジット・BET ===== */
@@ -239,6 +254,8 @@ button:disabled { opacity: 0.35; cursor: not-allowed; }
 
 /* ===== レスポンシブ（スマホ縦向き優先、PCでも見やすく） ===== */
 @media (max-width: 380px) {
-  .cell { height: 60px; font-size: 1.6rem; }
+  .reel-window  { height: 180px; }          /* 60px × 3 */
+  .reel-symbol  { height: 60px; font-size: 1.6rem; }
+  .reels::after { top: 60px; height: 60px; }
   h1 { font-size: 1.5rem; }
 }
