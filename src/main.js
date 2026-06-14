@@ -5,6 +5,7 @@ import { PaylineEvaluator } from './PaylineEvaluator.js';
 import { BellSimulator } from './BellSimulator.js';
 import { AudioDetector } from './AudioDetector.js';
 import { GameStateMachine, STATE } from './GameStateMachine.js';
+import { ReelAnimator } from './ReelAnimator.js';
 
 const SYMBOLS = {
   '7':      '7️⃣',
@@ -14,7 +15,9 @@ const SYMBOLS = {
   'BAR':    '🎰',
 };
 
-const SPIN_DURATION_MS = 1200; // リール演出時間
+// リール停止タイミング
+const FAST_SPIN_MS  = 700;  // 全リール高速回転する最低時間
+const STAGGER_MS    = 280;  // 各リール停止の時間差
 
 // --- DOM構築 ---
 document.querySelector('#app').innerHTML = `
@@ -64,7 +67,7 @@ const fever    = new FeverGauge();
 const reel     = new ReelEngine();
 const eval_    = new PaylineEvaluator();
 const state    = new GameStateMachine();
-let bell       = new BellSimulator(); // マイクON時に AudioDetector に切り替え
+let bell       = new BellSimulator();
 let usingMic   = false;
 
 // --- DOM参照 ---
@@ -81,43 +84,20 @@ const bellBtn   = document.getElementById('btn-bell');
 const micBtn    = document.getElementById('btn-mic');
 const micStatus = document.getElementById('mic-status');
 
-// --- リール DOM 初期化 ---
-let cellEls = []; // cellEls[col][row]
+// --- リールアニメータ初期化 ---
+const animators = [];
 for (let col = 0; col < 3; col++) {
-  const colEl = document.createElement('div');
-  colEl.className = 'reel-col';
-  cellEls[col] = [];
-  for (let row = 0; row < 3; row++) {
-    const cell = document.createElement('div');
-    cell.className = 'cell';
-    cell.textContent = '　';
-    colEl.appendChild(cell);
-    cellEls[col][row] = cell;
-  }
-  reelsEl.appendChild(colEl);
-}
-
-function renderGrid(grid) {
-  for (let col = 0; col < 3; col++) {
-    for (let row = 0; row < 3; row++) {
-      cellEls[col][row].textContent = SYMBOLS[grid[row][col]] ?? '?';
-      cellEls[col][row].classList.remove('spinning', 'hit');
-    }
-  }
-}
-
-function setSpinning(spinning) {
-  cellEls.flat().forEach(c => {
-    if (spinning) c.classList.add('spinning');
-    else c.classList.remove('spinning');
-  });
+  const windowEl = document.createElement('div');
+  windowEl.className = 'reel-window';
+  reelsEl.appendChild(windowEl);
+  animators.push(new ReelAnimator(windowEl, SYMBOLS, reel.getStrip()));
 }
 
 function highlightHits(hits) {
   const lines = eval_.getLines();
   hits.forEach(({ lineIndex }) => {
     lines[lineIndex].forEach(([row, col]) => {
-      cellEls[col][row].classList.add('hit');
+      animators[col].highlightRow(row);
     });
   });
 }
@@ -126,7 +106,7 @@ function highlightHits(hits) {
 credit.on(({ balance, bet }) => {
   balanceEl.textContent = balance;
   betEl.textContent = bet;
-  spinBtn.disabled = !credit.canBet() || (!state.is(STATE.IDLE) && !state.is(STATE.FEVER));
+  spinBtn.disabled = !credit.canBet() || !state.is(STATE.IDLE);
 });
 
 // --- フィーバーゲージ表示 ---
@@ -146,18 +126,19 @@ fever.on('change', (g) => {
 
 fever.on('fever_start', () => {
   reel.setFeverMode(true);
+  animators.forEach(a => a.updateStrip(reel.getStrip()));
   cabinet.classList.add('fever');
   msgEl.textContent = '🔥 FEVER!! 🔥';
-  // フィーバーは時間制のため状態遷移しない（IDLE のまま複数スピン可）
 });
 
 fever.on('fever_end', () => {
   reel.setFeverMode(false);
+  animators.forEach(a => a.updateStrip(reel.getStrip()));
   cabinet.classList.remove('fever');
   flashMsg('FEVER終了');
 });
 
-// --- ベルイベントハンドラ（bell インスタンスが切り替わっても同じ処理） ---
+// --- ベルイベントハンドラ ---
 function onBell() {
   fever.onBell();
   credit.addBonus(1);
@@ -177,7 +158,6 @@ micBtn.addEventListener('click', async () => {
     const detector = new AudioDetector();
     await detector.start();
 
-    // BellSimulator から AudioDetector に切り替え
     bell = detector;
     bell.on('bell', onBell);
     usingMic = true;
@@ -185,7 +165,7 @@ micBtn.addEventListener('click', async () => {
     micStatus.textContent = '🎤 マイクON（ベル音を検出中）';
     micBtn.textContent = 'マイクをOFFにする';
     micBtn.disabled = false;
-    bellBtn.style.display = 'none'; // シミュレータボタンを非表示
+    bellBtn.style.display = 'none';
 
     micBtn.onclick = () => {
       detector.stop();
@@ -195,10 +175,9 @@ micBtn.addEventListener('click', async () => {
       micStatus.textContent = '🎤 マイクOFF（シミュレータ使用中）';
       micBtn.textContent = 'マイクをONにする';
       bellBtn.style.display = '';
-      micBtn.onclick = null; // 元のリスナーに戻す（再度addEventListenerは不要）
+      micBtn.onclick = null;
     };
   } catch (err) {
-    // 拒否 or デバイスなし → シミュレータ継続
     micStatus.textContent = '🎤 マイク取得失敗（シミュレータを使用）';
     micBtn.textContent = 'マイクをONにする';
     micBtn.disabled = false;
@@ -227,17 +206,26 @@ spinBtn.addEventListener('click', async () => {
   msgEl.textContent = '';
   credit.deductBet();
 
-  // リール演出
+  // 停止位置を事前決定
   reel.spin();
-  setSpinning(true);
-  await delay(SPIN_DURATION_MS);
-  setSpinning(false);
+  const positions = reel.getPositions();
 
+  // ハイライトをクリアして全リール回転開始
+  animators.forEach(a => {
+    a.clearHighlights();
+    a.startSpin();
+  });
+
+  // 左→中→右の順に時間差で停止
+  await Promise.all(
+    animators.map((anim, col) =>
+      anim.stopAt(positions[col], FAST_SPIN_MS + col * STAGGER_MS)
+    )
+  );
+
+  // 当否判定
   const grid = reel.getGrid();
-  renderGrid(grid);
-
-  // 判定
-  const hits = eval_.evaluate(grid);
+  const hits  = eval_.evaluate(grid);
   const total = eval_.totalPayout(hits) * credit.bet;
 
   if (hits.length > 0) {
@@ -245,12 +233,11 @@ spinBtn.addEventListener('click', async () => {
     credit.addWin(total);
     winEl.textContent = total;
     msgEl.textContent = total >= 100 ? '🎉 JACKPOT!! 🎉' : `WIN! +${total}`;
-    fever.onWin(); // MAX中は+3秒、通常時は3秒減衰ストップ
+    fever.onWin();
   } else {
     msgEl.textContent = 'はずれ…';
   }
 
-  // 常にIDLEに戻る（フィーバーは時間制で別管理）
   state.transition(STATE.IDLE);
   updateSpinBtn();
 });
@@ -263,14 +250,3 @@ function flashMsg(text) {
   msgEl.textContent = text;
   setTimeout(() => { if (msgEl.textContent === text) msgEl.textContent = ''; }, 1200);
 }
-
-function delay(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-// 初期描画
-renderGrid([
-  ['BAR','BAR','BAR'],
-  ['BAR','BAR','BAR'],
-  ['BAR','BAR','BAR'],
-]);
