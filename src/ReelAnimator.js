@@ -54,7 +54,8 @@ export class ReelAnimator {
   // 指定シンボルを上段に表示（アイドル時用）
   _showPos(pos) {
     const singleH = this._strip.length * CELL_H;
-    this._setY(-(singleH + pos * CELL_H));
+    // 下方向スクロール: 後ろのコピーを起点にして +y 方向へスピンできるよう配置
+    this._setY(-((COPIES - 2) * singleH + pos * CELL_H));
   }
 
   // ── 公開API ────────────────────────────────────────────────
@@ -87,15 +88,15 @@ export class ReelAnimator {
         this._phase = 'decel';
         cancelAnimationFrame(this._rafId);
 
-        const singleH  = this._strip.length * CELL_H;
-        const minDist  = singleH * 0.5;  // 最低でも半ストリップ分進んで停止
-        const safeBound = -((COPIES - 1) * singleH); // 末端1コピーは余白として確保
+        const singleH = this._strip.length * CELL_H;
+        const minDist = singleH * 0.5;  // 最低でも半ストリップ分進んで停止
 
-        // copy0のposを基点に、現在地より minDist 以上先を探す
+        // 下方向スクロール（+y）: copy0 基準から現在地より minDist 以上先（+y方向）を探す
         let targetY = -(pos * CELL_H);
-        while (targetY > this._y - minDist) targetY -= singleH;
-        // 安全圏を超えた場合は1コピー戻す
-        while (targetY < safeBound) targetY += singleH;
+        while (targetY > this._y) targetY -= singleH;
+        while (targetY < this._y + minDist) targetY += singleH;
+        // ストリップ開始（y=0）を超えないよう安全圏を確保
+        while (targetY > 0) targetY -= singleH;
 
         const startY = this._y;
         const dist   = targetY - startY;
@@ -123,7 +124,7 @@ export class ReelAnimator {
   _doBounce(targetY, resolve) {
     this._phase = 'bounce';
     // 行き過ぎ → 戻る の2段階トゥイーン
-    const overY = targetY - BOUNCE_OVER; // 少し行き過ぎ（上方向）
+    const overY = targetY + BOUNCE_OVER; // 少し行き過ぎ（下方向）
     let t0 = null;
 
     const overStep = ts => {
@@ -172,9 +173,9 @@ export class ReelAnimator {
     }
 
     const singleH = this._strip.length * CELL_H;
-    let newY = this._y - this._currentSpeed * dt;
-    // 末端から3コピー手前でジャンプ（this._y が安全圏を超えないようにする）
-    if (newY < -(COPIES - 3) * singleH) newY += singleH;
+    let newY = this._y + this._currentSpeed * dt; // +y方向（上から下スクロール）
+    // 先頭コピー付近に近づいたら後ろのコピーへジャンプ
+    if (newY > -(2 * singleH)) newY -= singleH;
     this._setY(newY);
 
     this._rafId = requestAnimationFrame(ts => this._spinLoop(ts));
