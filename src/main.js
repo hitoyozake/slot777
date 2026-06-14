@@ -12,7 +12,6 @@ const SYMBOLS = {
   'CHERRY': '🍒',
   'WATER':  '💧',
   'BAR':    '🎰',
-  'BLANK':  '　',
 };
 
 const SPIN_DURATION_MS = 1200; // リール演出時間
@@ -271,7 +270,7 @@ function delay(ms) {
 
 // 初期描画
 renderGrid([
-  ['BLANK','BLANK','BLANK'],
-  ['BLANK','BLANK','BLANK'],
-  ['BLANK','BLANK','BLANK'],
+  ['BAR','BAR','BAR'],
+  ['BAR','BAR','BAR'],
+  ['BAR','BAR','BAR'],
 ]);
