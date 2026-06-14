@@ -30,6 +30,40 @@ h1 {
   margin-bottom: 16px;
 }
 
+/* ===== マイクバー ===== */
+.mic-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #111;
+  border: 1px solid #334;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  font-size: 0.8rem;
+  gap: 8px;
+}
+
+#mic-status {
+  color: #aaa;
+  flex: 1;
+}
+
+.btn-mic {
+  background: #2a2a4a;
+  color: #ccc;
+  border: 1px solid #556;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  white-space: nowrap;
+  flex: none;
+}
+
+.btn-mic:hover:not(:disabled) { background: #3a3a6a; }
+.btn-mic:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* ===== フィーバーゲージ ===== */
 .fever-wrap {
   margin-bottom: 12px;
