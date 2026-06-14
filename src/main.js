@@ -132,26 +132,29 @@ credit.on(({ balance, bet }) => {
 // --- フィーバーゲージ表示 ---
 fever.on('change', (g) => {
   const pct = Math.round(g.value);
-  feverBar.style.width = pct + '%';
-  feverPct.textContent = pct + '%';
-  if (pct >= 100) feverBar.classList.add('full');
-  else feverBar.classList.remove('full');
+  feverBar.style.width = (g.isFever ? 100 : pct) + '%';
+  if (g.isFever) {
+    const secs = Math.ceil(g.feverTimeRemaining / 1000);
+    feverPct.textContent = `🔥 ${secs}s`;
+    feverBar.classList.add('full');
+  } else {
+    feverPct.textContent = pct + '%';
+    if (pct >= 100) feverBar.classList.add('full');
+    else feverBar.classList.remove('full');
+  }
 });
 
 fever.on('fever_start', () => {
   reel.setFeverMode(true);
   cabinet.classList.add('fever');
   msgEl.textContent = '🔥 FEVER!! 🔥';
-  state.transition(STATE.FEVER);
+  // フィーバーは時間制のため状態遷移しない（IDLE のまま複数スピン可）
 });
 
 fever.on('fever_end', () => {
   reel.setFeverMode(false);
   cabinet.classList.remove('fever');
-  state.transition(STATE.IDLE);
-  msgEl.textContent = 'FEVER終了';
-  setTimeout(() => { if (msgEl.textContent === 'FEVER終了') msgEl.textContent = ''; }, 1500);
-  updateSpinBtn();
+  flashMsg('FEVER終了');
 });
 
 // --- ベルイベントハンドラ（bell インスタンスが切り替わっても同じ処理） ---
@@ -215,7 +218,7 @@ document.getElementById('bet1').classList.add('active');
 
 // --- SPINボタン ---
 spinBtn.addEventListener('click', async () => {
-  if (!state.is(STATE.IDLE) && !state.is(STATE.FEVER)) return;
+  if (!state.is(STATE.IDLE)) return;
   if (!credit.canBet()) return;
 
   state.transition(STATE.SPINNING);
@@ -242,17 +245,14 @@ spinBtn.addEventListener('click', async () => {
     credit.addWin(total);
     winEl.textContent = total;
     msgEl.textContent = total >= 100 ? '🎉 JACKPOT!! 🎉' : `WIN! +${total}`;
+    fever.onWin(); // MAX中は+3秒、通常時は3秒減衰ストップ
   } else {
     msgEl.textContent = 'はずれ…';
   }
 
-  // フィーバー中はスピン後にフィーバー終了
-  if (fever.isFever) {
-    setTimeout(() => fever.endFever(), 800);
-  } else {
-    state.transition(STATE.IDLE);
-    updateSpinBtn();
-  }
+  // 常にIDLEに戻る（フィーバーは時間制で別管理）
+  state.transition(STATE.IDLE);
+  updateSpinBtn();
 });
 
 function updateSpinBtn() {
