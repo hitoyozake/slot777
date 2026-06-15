@@ -54,6 +54,7 @@ document.querySelector('#app').innerHTML = `
     </div>
     <div class="controls">
       <button class="btn-spin" id="btn-spin">SPIN ▶</button>
+      <button class="btn-auto" id="btn-auto">AUTO</button>
       <button class="btn-bell" id="btn-bell">🔔 ベル</button>
     </div>
 
@@ -80,6 +81,7 @@ const feverBar  = document.getElementById('fever-bar');
 const feverPct  = document.getElementById('fever-pct');
 const cabinet   = document.getElementById('cabinet');
 const spinBtn   = document.getElementById('btn-spin');
+const autoBtn   = document.getElementById('btn-auto');
 const bellBtn   = document.getElementById('btn-bell');
 const micBtn    = document.getElementById('btn-mic');
 const micStatus = document.getElementById('mic-status');
@@ -195,8 +197,10 @@ document.querySelectorAll('.btn-bet').forEach(btn => {
 });
 document.getElementById('bet1').classList.add('active');
 
-// --- SPINボタン ---
-spinBtn.addEventListener('click', async () => {
+// --- スピン処理 ---
+let autoMode = false;
+
+async function doSpin() {
   if (!state.is(STATE.IDLE)) return;
   if (!credit.canBet()) return;
 
@@ -206,24 +210,20 @@ spinBtn.addEventListener('click', async () => {
   msgEl.textContent = '';
   credit.deductBet();
 
-  // 停止位置を事前決定
   reel.spin();
   const positions = reel.getPositions();
 
-  // ハイライトをクリアして全リール回転開始
   animators.forEach(a => {
     a.clearHighlights();
     a.startSpin();
   });
 
-  // 左→中→右の順に時間差で停止
   await Promise.all(
     animators.map((anim, col) =>
       anim.stopAt(positions[col], FAST_SPIN_MS + col * STAGGER_MS)
     )
   );
 
-  // 当否判定
   const grid = reel.getGrid();
   const hits  = eval_.evaluate(grid);
   const total = eval_.totalPayout(hits) * credit.bet;
@@ -240,6 +240,28 @@ spinBtn.addEventListener('click', async () => {
 
   state.transition(STATE.IDLE);
   updateSpinBtn();
+
+  if (autoMode) {
+    if (credit.canBet()) {
+      setTimeout(doSpin, 400);
+    } else {
+      autoMode = false;
+      autoBtn.classList.remove('active');
+      flashMsg('クレジット不足でオート停止');
+    }
+  }
+}
+
+// --- SPINボタン ---
+spinBtn.addEventListener('click', () => doSpin());
+
+// --- AUTOボタン ---
+autoBtn.addEventListener('click', () => {
+  autoMode = !autoMode;
+  autoBtn.classList.toggle('active', autoMode);
+  if (autoMode && state.is(STATE.IDLE) && credit.canBet()) {
+    doSpin();
+  }
 });
 
 function updateSpinBtn() {

@@ -224,6 +224,20 @@ button:disabled { opacity: 0.35; cursor: not-allowed; }
   border: 2px solid #ffd700;
 }
 
+.btn-auto {
+  background: #334;
+  color: #aaa;
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+}
+
+.btn-auto.active {
+  background: linear-gradient(135deg, #00b4d8, #0077b6);
+  color: #fff;
+  border: 2px solid #00b4d8;
+  box-shadow: 0 0 8px #00b4d888;
+}
+
 .btn-bell {
   background: linear-gradient(135deg, #e040fb, #7c4dff);
   color: #fff;
